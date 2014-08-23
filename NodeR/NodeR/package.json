@@ -1,0 +1,14 @@
+{
+  "name": "NodeR",
+  "version": "0.0.0",
+  "description": "NodeR",
+  "main": "app.js",
+  "author": {
+    "name": "scott",
+    "email": ""
+  },
+  "dependencies": {
+    "q": "^1.0.1",
+    "websocket": "^1.0.8"
+  }
+}
