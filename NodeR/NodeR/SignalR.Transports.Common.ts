@@ -1,10 +1,24 @@
-﻿import events = require("events");
+﻿var Q = require("q");
+import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
 import NodeRHelpers = require("./NodeR.Helpers");
+import NodeRErrors = require("./NodeR.Errors");
 
 export class TransportBase extends events.EventEmitter {
-	constructor() {
+	public name: string;
+
+	constructor(name: string) {
 		super();
+
+		this.name = name;
+	}
+
+	public reconnect(connection: SignalRInterfaces.Connection) {
+		if (connection.isConnectedOrReconnecting()) {
+			if (connection.verifyLastActive()) {
+				connection.setReconnectTimer();
+			}
+		}
 	}
 
 	public stringifyData(data: any): string {
@@ -19,23 +33,13 @@ export class TransportBase extends events.EventEmitter {
 		return payload;
 	}
 
-	public markLastMessage(connection: SignalRInterfaces.Connection) {
-		connection.lastMessageAt = new Date().getTime();
-	}
-
-	public updateGroups(connection: SignalRInterfaces.Connection, groupsToken: string) {
-		if (!!groupsToken) {
-			connection.groupsToken = groupsToken;
-		}
-	}
-
 	public processMessages(connection: SignalRInterfaces.Connection, data: SignalRInterfaces.MinifiedPersistentResponse) {
-		this.markLastMessage(connection);
+		connection.markLastMessage();
 
 		if (!!data) {
 			var persistentResponse: SignalRInterfaces.PersistentResponse = NodeRHelpers.expandPersistentResponse(data);
 
-			this.updateGroups(connection, persistentResponse.GroupsToken);
+			connection.updateGroups(persistentResponse.GroupsToken);
 
 			if (!!persistentResponse.MessageId) {
 				connection.messageId = persistentResponse.MessageId;
@@ -47,6 +51,15 @@ export class TransportBase extends events.EventEmitter {
 				}
 			}
 		}
+	}
+
+	public abort(connection: SignalRInterfaces.Connection): Q.Promise<any> {
+		var abortUrl: string = connection.baseUrl + "/abort?transport=" + this.name;
+		abortUrl = prepareQueryString(connection, abortUrl);
+
+		var deferred: Q.Deferred<any> = Q.defer();
+		NodeRHelpers.createPostRequest(abortUrl, deferred);
+		return deferred.promise;
 	}
 }
 

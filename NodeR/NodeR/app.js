@@ -14,8 +14,12 @@ function getName() {
 getName().then(function (name) {
     console.log("your name is " + name);
     _name = name;
+    
+    var connectionData = {
+        name: "chathub"
+    };
 
-    return nodeRClient.start("http://localhost:51554");
+    return nodeRClient.start("http://localhost:51554", connectionData);
 }).then(function (result) {
     console.log(result);
     

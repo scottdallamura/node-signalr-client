@@ -1,15 +1,16 @@
 ﻿import url = require("url");
 
 export class TransportEvents {
-	public static OnStart: string = "onStart";
-	public static OnStarting: string = "onStarting";
 	public static OnReceived: string = "onReceived";
 	public static OnError: string = "onError";
-	public static OnConnectionSlow: string = "onConnectionSlow";
-	public static OnReconnecting: string = "onReconnecting";
-	public static OnReconnect: string = "onReconnect";
-	public static OnStateChanged: string = "onStateChanged";
+}
+
+export class ConnectionEvents {
 	public static OnDisconnect: string = "onDisconnect";
+	public static OnStateChanged: string = "onStateChanged";
+	public static OnReconnect: string = "onReconnect";
+	public static OnReconnecting: string = "onReconnecting";
+	public static OnConnectionSlow: string = "onConnectionSlow";
 }
 
 export interface NegotiateResponse {
@@ -24,25 +25,46 @@ export interface NegotiateResponse {
 	Url?: string;
 }
 
-export interface Connection {
+export enum ConnectionState {
+	Connecting,
+	Connected,
+	Reconnecting,
+	Disconnected
+}
+
+export interface Connection extends NodeJS.EventEmitter {
+	baseUrl: string;
 	connectionUrl: url.Url;
-	appRelativeUrl?: string;
-	groupsToken?: string;
-	messageId?: string;
-	clientProtocol?: string;
-	queryString?: string;
-	token?: string;
-	data?: string;
-	lastMessageAt?: number;
+	appRelativeUrl: string;
+	groupsToken: string;
+	messageId: string;
+	reconnectWindow: number;
+	clientProtocol: string;
+	queryString: string;
+	token: string;
+	data: string;
+
+	log(message: string): void;
+	isConnectedOrReconnecting(): boolean;
+	markLastMessage(): void;
+	updateGroups(groupsToken: string): void;
+	clearReconnectTimer(): void;
+	setReconnectTimer(): void;
+	changeState(expectedState: ConnectionState, newState: ConnectionState): boolean;
+	start(transport: Transport): void;
+	verifyLastActive(): boolean;
 }
 
 export interface Transport extends NodeJS.EventEmitter {
 	name: string;
 
 	isSupported(negotiateResponse: NegotiateResponse): boolean;
+	supportsKeepAlive(): boolean;
 	send(connection: Connection, data: any);
 	start(connection: Connection, reconnecting?: boolean): Q.Promise<any>;
 	stop(): void;
+	abort(connection: Connection): Q.Promise<any>;
+	lostConnection(connection: Connection);
 }
 
 export interface MinifiedHubInvocation {

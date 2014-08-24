@@ -10,19 +10,14 @@ import NodeRHelpers = require("./NodeR.Helpers");
 
 
 export class WebSocketsTransport extends SignalRTransports.TransportBase implements SignalRInterfaces.Transport {
-	public name: string = "webSockets";
-
 	private _websocketConnection: websocket.connection;
 
 	constructor() {
-		super();
+		super("webSockets");
 	}
 
 	public isSupported(negotiateResponse: SignalRInterfaces.NegotiateResponse): boolean {
 		return negotiateResponse.TryWebSockets;
-	}
-
-	private reconnect(connection: SignalRInterfaces.Connection) {
 	}
 
 	public send(connection: SignalRInterfaces.Connection, data: any) {
@@ -52,6 +47,12 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 				opened = true;
 				this._websocketConnection = wsConnection;
 
+				connection.clearReconnectTimer();
+				if (connection.changeState(SignalRInterfaces.ConnectionState.Reconnecting, SignalRInterfaces.ConnectionState.Connected)) {
+					// reconnected
+					connection.emit(SignalRInterfaces.ConnectionEvents.OnReconnect);
+				}
+				
 				wsConnection.on("error", (error: Error) => {
 					deferred.reject(error);
 				});
@@ -86,7 +87,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 				deferred.resolve(this);
 			});
 
-			var websocketUrl: string = this.getWebsocketUrl(connection, false);
+			var websocketUrl: string = this.getWebSocketUrl(connection, false);
 			client.connect(websocketUrl);
 		}
 
@@ -94,9 +95,21 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 	}
 
 	public stop(): void {
+		if (!!this._websocketConnection) {
+			this._websocketConnection.close();
+			this._websocketConnection = null;
+		}
 	}
 
-	private getWebsocketUrl(connection: SignalRInterfaces.Connection, reconnecting: boolean): string {
+	public supportsKeepAlive(): boolean {
+		return true;
+	}
+
+	public lostConnection(connection: SignalRInterfaces.Connection) {
+		this.reconnect(connection);
+	}
+
+	private getWebSocketUrl(connection: SignalRInterfaces.Connection, reconnecting: boolean): string {
 		var websocketProtocol: string = connection.connectionUrl.protocol === "https:" ? "wss://" : "ws://";
 		var result: string = websocketProtocol + connection.connectionUrl.host + connection.appRelativeUrl;
 		var queryString: string = "transport=" + this.name;

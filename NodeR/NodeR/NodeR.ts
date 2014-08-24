@@ -3,8 +3,10 @@
 var Q = require("q");
 import url = require("url");
 import util = require("util");
+import http = require("http");
 import SignalRInterfaces = require("./SignalR.Interfaces");
 import SignalRHubs = require("./SignalR.Hubs");
+import SignalRConnection = require("./SignalR.Connection");
 import NodeRInterfaces = require("./NodeR.Interfaces");
 import NodeRHelpers = require("./NodeR.Helpers");
 import NodeRErrors = require("./NodeR.Errors");
@@ -17,7 +19,9 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 	public static DefaultProtocolVersion: string = "1.4";
 
 	private _installedTransports: SignalRInterfaces.Transport[];
-	private _connection: SignalRInterfaces.Connection;
+	private _negotiateRequest: http.ClientRequest;
+	private _startDeferred: Q.Deferred<any>;
+	private _connection: SignalRConnection.Connection;
 	private _connectedTransport: SignalRInterfaces.Transport;
 	private _invocationCallbackId: number = 0;
 	private _invocationCallbacks: { [id: string]: (minifedResult: SignalRInterfaces.MinifiedHubResponse) => void; } = {};
@@ -27,12 +31,15 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 		this._installedTransports = transports;
 	}
 
-	public start(baseUrl: string): Q.Promise<any> {
-		var deferred: Q.Deferred<any> = Q.defer();
+	public start(baseUrl: string, connectionData: any): Q.Promise<any> {
+		this._startDeferred = this._startDeferred || Q.defer();
+
 		var transports: SignalRInterfaces.Transport[] = [];
 
-		this.negotiate(baseUrl)
+		this.negotiate(baseUrl, connectionData)
 			.then((negotiateResponse: SignalRInterfaces.NegotiateResponse) => {
+				delete this._negotiateRequest;
+
 				// get supported transports
 				var supportedTransports: SignalRInterfaces.Transport[] = this.getSupportedTransports(negotiateResponse);
 				if (supportedTransports.length === 0) {
@@ -44,6 +51,10 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 			.then((transport: SignalRInterfaces.Transport) => {
 				// transport connected ok
 				this._connectedTransport = transport;
+
+				this._connection.start(transport);
+
+				// message listener
 				this._connectedTransport.addListener(SignalRInterfaces.TransportEvents.OnReceived, (data: any) => {
 					if (!!data) {
 						if (typeof (data.P) !== "undefined") {
@@ -86,13 +97,16 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 					}
 				});
 
-				deferred.resolve(true);
+				this._startDeferred.resolve(true);
 			})
 			.fail((error: Error) => {
-				deferred.reject(error);
+				this._startDeferred.reject(error);
+			})
+			.finally(() => {
+				delete this._startDeferred;
 			});
 
-		return deferred.promise;
+		return this._startDeferred.promise;
 	}
 
 	public createHub(hubName: string) {
@@ -104,6 +118,21 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 		}
 
 		return hub;
+	}
+
+	public stop() {
+		if (!!this._startDeferred) {
+			this._startDeferred.reject(NodeRErrors.createError(NodeRErrors.Messages.StoppedWhileStarting, null, this));
+		}
+
+		if (!!this._negotiateRequest) {
+			this._negotiateRequest.abort();
+			delete this._negotiateRequest;
+		}
+
+		if (!!this._connection) {
+			this._connection.stop(true);
+		}
 	}
 
 	public send(data: any) {
@@ -178,11 +207,6 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 
 		var deferred: Q.Deferred<SignalRInterfaces.NegotiateResponse> = Q.defer();
 
-		// var url: string = "http://localhost:51554/signalr/negotiate?clientProtocol=1.4&connectionData=%5B%7B%22name%22%3A%22chathub%22%7D%5D&_=1408209389918";
-		connectionData = {
-			name: "chathub"
-		};
-
 		var path: string = "/signalr/negotiate?clientProtocol=" + encodeURIComponent(protocolVersion);
 		if (!!connectionData) {
 			if (!util.isArray(connectionData)) {
@@ -192,7 +216,10 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 			path += "&connectionData=" + encodeURIComponent(JSON.stringify(connectionData));
 		}
 
-		NodeRHelpers.makeGetRequest(baseUrl + path)
+		var negotiateDeferred: Q.Deferred<NodeRInterfaces.HttpResponse> = Q.defer();
+		this._negotiateRequest = NodeRHelpers.createGetRequest(baseUrl + path, negotiateDeferred);
+
+		negotiateDeferred.promise
 			.then((response: NodeRInterfaces.HttpResponse) => {
 				if (response.response.statusCode >= 400) {
 					if (response.content === MagicStrings.NegotiateAborted) {
@@ -205,15 +232,17 @@ export class NodeRClient implements SignalRInterfaces.HubConnection {
 
 				var negotiateResponse: SignalRInterfaces.NegotiateResponse = JSON.parse(response.content);
 
-				this._connection = {
-					connectionUrl: url.parse(baseUrl),
-					clientProtocol: protocolVersion,
-					appRelativeUrl: negotiateResponse.Url,
-					token: negotiateResponse.ConnectionToken,
-					data: JSON.stringify(connectionData)
-				};
+				if (!negotiateResponse.ProtocolVersion || negotiateResponse.ProtocolVersion !== protocolVersion) {
+					// not the requested protocol version
+					var protocolError: Error = NodeRErrors.createError(NodeRHelpers.format(NodeRErrors.Messages.ProtocolIncompatible, protocolVersion, negotiateResponse.ProtocolVersion), null, this);
+					deferred.reject(protocolError);
+				}
+				else {
+					// set up the connection data
+					this._connection = new SignalRConnection.Connection(baseUrl, negotiateResponse, connectionData);
 
-				deferred.resolve(negotiateResponse);
+					deferred.resolve(negotiateResponse);
+				}
 			})
 			.fail((reason: any) => {
 				deferred.reject(NodeRErrors.createError(NodeRErrors.Messages.ErrorOnNegotiate, reason, this));

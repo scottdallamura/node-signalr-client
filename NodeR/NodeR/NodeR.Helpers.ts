@@ -5,10 +5,9 @@ import url = require("url");
 import NodeRInterfaces = require("./NodeR.Interfaces");
 import SignalRInterfaces = require("./SignalR.Interfaces");
 
-export function makeGetRequest(options: any): Q.Promise<NodeRInterfaces.HttpResponse> {
-	var deferred: Q.Deferred<NodeRInterfaces.HttpResponse> = Q.defer();
-
+function getProtocol(options: any): string {
 	var protocol: string;
+
 	if (typeof (options) === "string") {
 		protocol = url.parse(options).protocol;
 	}
@@ -16,8 +15,15 @@ export function makeGetRequest(options: any): Q.Promise<NodeRInterfaces.HttpResp
 		protocol = options.protocol;
 	}
 
+	return protocol;
+}
+
+export function createGetRequest(options: any, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+	var protocol: string = getProtocol(options);
+
+	var clientRequest: http.ClientRequest;
 	if (protocol === "http:") {
-		http.get(options,
+		clientRequest = http.get(options,
 			(result: http.ClientResponse) => {
 				var content: string = "";
 
@@ -37,7 +43,7 @@ export function makeGetRequest(options: any): Q.Promise<NodeRInterfaces.HttpResp
 			});
 	}
 	else {
-		https.get(options,
+		clientRequest = https.get(options,
 			(result: http.ClientResponse) => {
 				var content: string = "";
 
@@ -57,7 +63,64 @@ export function makeGetRequest(options: any): Q.Promise<NodeRInterfaces.HttpResp
 			});
 	}
 
-	return deferred.promise;
+	return clientRequest;
+}
+
+export function createPostRequest(options: any, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+	return createHttpRequest(options, "POST", deferred);
+}
+
+export function createHttpRequest(options: any, method: string, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+	if (typeof (options) === "string") {
+		options = url.parse(options);
+	}
+	options.method = method;
+
+	var protocol: string = getProtocol(options);
+	var clientRequest: http.ClientRequest;
+
+	if (protocol === "http:") {
+		clientRequest = http.request(options,
+			(result: http.ClientResponse) => {
+				var content: string = "";
+
+				result
+					.on("error", (error) => {
+						deferred.reject(error);
+					})
+					.on("data", (data: string) => {
+						content += data;
+					})
+					.on("end", () => {
+						deferred.resolve({
+							response: result,
+							content: content
+						});
+					});
+			});
+	}
+	else {
+		clientRequest = https.request(options,
+			(result: http.ClientResponse) => {
+				var content: string = "";
+
+				result
+					.on("error", (error) => {
+						deferred.reject(error);
+					})
+					.on("data", (data: string) => {
+						content += data;
+					})
+					.on("end", () => {
+						deferred.resolve({
+							response: result,
+							content: content
+						});
+					});
+			});
+	}
+
+	return clientRequest;
 }
 
 export function getConsoleInput(prompt: string): Q.Promise<string> {
@@ -125,4 +188,11 @@ export function isEmptyObject(obj: any): boolean {
 		return false;
 	}
 	return true;
+}
+
+export function format(template: string, ...args: any[]) {
+	for (var i = 0; i < args.length; i++) {
+		template = template.replace("{" + i + "}", args[i]);
+	}
+	return template;
 }
