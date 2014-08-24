@@ -13,18 +13,6 @@ class MagicStrings {
 	public static NegotiateAborted: string = "__Negotiate Aborted__";
 }
 
-export function test(code: number): Q.Promise<NodeRInterfaces.HttpResponse> {
-	var options: any = {
-		host: "localhost",
-		port: 51554,
-		path: "/api/values/" + code,
-		method: "GET",
-		headers: {}
-	};
-
-	return NodeRHelpers.makeGetRequest(options);
-}
-
 export class NodeRClient implements SignalRInterfaces.HubConnection {
 	public static DefaultProtocolVersion: string = "1.4";
 

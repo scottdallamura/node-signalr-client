@@ -31,7 +31,3 @@ getName().then(function (name) {
 }).catch(function (err) {
     console.log(err);
 });
-
-/*NodeR.test(500).then(function (response) {
-    console.log(response);
-});*/
