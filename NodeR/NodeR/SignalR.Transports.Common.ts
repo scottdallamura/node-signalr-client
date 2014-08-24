@@ -1,5 +1,6 @@
 ﻿import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
+import NodeRHelpers = require("./NodeR.Helpers");
 
 export class TransportBase extends events.EventEmitter {
 	constructor() {
@@ -16,6 +17,36 @@ export class TransportBase extends events.EventEmitter {
 		}
 
 		return payload;
+	}
+
+	public markLastMessage(connection: SignalRInterfaces.Connection) {
+		connection.lastMessageAt = new Date().getTime();
+	}
+
+	public updateGroups(connection: SignalRInterfaces.Connection, groupsToken: string) {
+		if (!!groupsToken) {
+			connection.groupsToken = groupsToken;
+		}
+	}
+
+	public processMessages(connection: SignalRInterfaces.Connection, data: SignalRInterfaces.MinifiedPersistentResponse) {
+		this.markLastMessage(connection);
+
+		if (!!data) {
+			var persistentResponse: SignalRInterfaces.PersistentResponse = NodeRHelpers.expandPersistentResponse(data);
+
+			this.updateGroups(connection, persistentResponse.GroupsToken);
+
+			if (!!persistentResponse.MessageId) {
+				connection.messageId = persistentResponse.MessageId;
+			}
+
+			if (!!persistentResponse.Messages) {
+				for (var i = 0; i < persistentResponse.Messages.length; i++) {
+					this.emit(SignalRInterfaces.TransportEvents.OnReceived, persistentResponse.Messages[i]);
+				}
+			}
+		}
 	}
 }
 

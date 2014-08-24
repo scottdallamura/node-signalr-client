@@ -3,6 +3,7 @@ import http = require("http");
 import https = require("https");
 import url = require("url");
 import NodeRInterfaces = require("./NodeR.Interfaces");
+import SignalRInterfaces = require("./SignalR.Interfaces");
 
 export function makeGetRequest(options: any): Q.Promise<NodeRInterfaces.HttpResponse> {
 	var deferred: Q.Deferred<NodeRInterfaces.HttpResponse> = Q.defer();
@@ -72,4 +73,56 @@ export function getConsoleInput(prompt: string): Q.Promise<string> {
 	});
 
 	return deferred.promise;
+}
+
+export function expandHubResponse(minified: SignalRInterfaces.MinifiedHubResponse): SignalRInterfaces.HubResponse {
+	return {
+		State: minified.S,
+		Result: minified.R,
+		Progress: !!minified.P ? {
+			Id: minified.P.I,
+			Data: minified.P.D
+		} : null,
+		Id: minified.I,
+		IsHubException: minified.H,
+		Error: minified.E,
+		StackTrace: minified.T,
+		ErrorData: minified.D
+	};
+}
+
+export function expandClientHubInvocation(minified: SignalRInterfaces.MinifiedClientHubInvocation): SignalRInterfaces.ClientHubInvocation {
+	return {
+		Hub: minified.H,
+		Method: minified.M,
+		Args: minified.A,
+		State: minified.S
+	};
+}
+
+export function expandPersistentResponse(minified: SignalRInterfaces.MinifiedPersistentResponse): SignalRInterfaces.PersistentResponse {
+	return {
+		MessageId: minified.C,
+		Messages: minified.M,
+		Initialized: !!minified.S,
+		Disconnect: !!minified.D,
+		ShouldReconnect: !!minified.T,
+		LongPollDelay: minified.L,
+		GroupsToken: minified.G
+	};
+}
+
+export function extendState(targetState: any, newState: any) {
+	for (var key in newState) {
+		if (newState.hasOwnProperty(key)) {
+			targetState[key] = newState[key];
+		}
+	}
+}
+
+export function isEmptyObject(obj: any): boolean {
+	for (var key in obj) {
+		return false;
+	}
+	return true;
 }

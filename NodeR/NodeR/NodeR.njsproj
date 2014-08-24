@@ -38,6 +38,7 @@
     <TypeScriptCompile Include="NodeR.Errors.ts" />
     <TypeScriptCompile Include="NodeR.Helpers.ts" />
     <TypeScriptCompile Include="NodeR.Interfaces.ts" />
+    <TypeScriptCompile Include="SignalR.Hubs.ts" />
     <TypeScriptCompile Include="SignalR.Transports.Common.ts" />
     <TypeScriptCompile Include="SignalR.Transports.WebSockets.ts" />
     <TypeScriptCompile Include="SignalR.Interfaces.ts" />

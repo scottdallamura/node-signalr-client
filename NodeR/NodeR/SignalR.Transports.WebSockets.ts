@@ -6,6 +6,7 @@ import websocket = require('websocket');
 import SignalRInterfaces = require("./SignalR.Interfaces");
 import SignalRTransports = require("./SignalR.Transports.Common");
 import NodeRErrors = require("./NodeR.Errors");
+import NodeRHelpers = require("./NodeR.Helpers");
 
 
 export class WebSocketsTransport extends SignalRTransports.TransportBase implements SignalRInterfaces.Transport {
@@ -72,13 +73,21 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 				wsConnection.on("message", (data: websocket.IMessage) => {
 					var message: any = JSON.parse(data.utf8Data);
 
-					this.emit(SignalRInterfaces.TransportEvents.OnReceived, message);
+					if (!!message) {
+						if (NodeRHelpers.isEmptyObject(message) || message.M) {
+							this.processMessages(connection, message);
+						}
+						else {
+							this.emit(SignalRInterfaces.TransportEvents.OnReceived, message);
+						}
+					}
 				});
 
 				deferred.resolve(this);
 			});
 
-			client.connect(this.getWebsocketUrl(connection, false));
+			var websocketUrl: string = this.getWebsocketUrl(connection, false);
+			client.connect(websocketUrl);
 		}
 
 		return deferred.promise;
