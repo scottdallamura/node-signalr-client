@@ -34,6 +34,7 @@ export class SignalRHub extends events.EventEmitter {
 			NodeRHelpers.extendState(this.state, result.State);
 
 			if (!!result.Progress) {
+				// notify progress
 				deferred.notify(result.Progress.Data);
 			}
 			else if (!!result.Error) {
