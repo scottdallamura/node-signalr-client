@@ -103,12 +103,12 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 		this.connectionUrl = url.parse(baseUrl);
 		this.clientProtocol = negotiateResponse.ProtocolVersion;
 		this.appRelativeUrl = negotiateResponse.Url;
-		this._token = negotiateResponse.ConnectionToken;
 		this.data = JSON.stringify(connectionData);
+
+		this._token = negotiateResponse.ConnectionToken;
 		this._id = negotiateResponse.ConnectionId;
 		this._disconnectTimeout = negotiateResponse.DisconnectTimeout * 1000;
 		this._keepAlive = new KeepAlive(negotiateResponse);
-
 		this._reconnectWindow = this._disconnectTimeout + (this._keepAlive.timeout || 0);
 	}
 
@@ -204,7 +204,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 				this.stopMonitoringKeepAlive();
 
 				if (notifyServer) {
-					promise = this._transport.abort(this);
+					promise = this._transport.abort();
 				}
 
 				this._transport = null;
@@ -314,7 +314,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 			if (elapsedTime >= keepAlive.timeout) {
 				this.log("Keep alive timed out.  Notifying transport that connection has been lost.");
 
-				this._transport.lostConnection(this);
+				this._transport.lostConnection();
 			}
 			else if (elapsedTime >= keepAlive.timeoutWarning) {
 				if (!keepAlive.userNotified) {

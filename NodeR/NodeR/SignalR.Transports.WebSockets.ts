@@ -8,19 +8,32 @@ import SignalRTransports = require("./SignalR.Transports.Common");
 import SignalRErrors = require("./SignalR.Errors");
 import SignalRHelpers = require("./SignalR.Helpers");
 
-
+/**
+ * A SignalR WebSockets transport.
+ */
 export class WebSocketsTransport extends SignalRTransports.TransportBase implements SignalRInterfaces.Transport {
 	private _websocketConnection: websocket.connection;
 
+	/**
+	 * Creates a new WebSocketsTransport.
+	 */
 	constructor() {
 		super("webSockets");
 	}
 
-	public isSupported(negotiateResponse: SignalRInterfaces.NegotiateResponse): boolean {
+	/**
+	 * Determines whether the transport is supported.
+	 * @param negotiateResponse The negotiate response from the server
+	 */
+	public static isSupported(negotiateResponse: SignalRInterfaces.NegotiateResponse): boolean {
 		return negotiateResponse.TryWebSockets;
 	}
 
-	public send(connection: SignalRInterfaces.Connection, data: any) {
+	/**
+	 * Sends data via the transport.
+	 * @param data The data to send
+	 */
+	public send(data: any) {
 		try {
 			this._websocketConnection.sendUTF(data);
 		}
@@ -29,7 +42,14 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 		}
 	}
 
+	/**
+	 * Starts the transport.
+	 * @param connection The SignalR connection
+	 * @param reconnecting Whether this is a reconnect attempt
+	 */
 	public start(connection: SignalRInterfaces.Connection, reconnecting?: boolean): Q.Promise<any> {
+		this._signalRConnection = connection;
+
 		var deferred: Q.Deferred<any> = Q.defer();
 		var transport: WebSocketsTransport = this;
 		var opened: boolean = false;
@@ -94,19 +114,31 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 		return deferred.promise;
 	}
 
+	/**
+	 * Stops the transport.
+	 */
 	public stop(): void {
+		this._signalRConnection.clearReconnectTimer();
+
 		if (!!this._websocketConnection) {
+			this._signalRConnection.log("Closing the WebSocket.");
 			this._websocketConnection.close();
 			this._websocketConnection = null;
 		}
 	}
 
+	/**
+	 * Indicates whether the transport supports keep-alive.
+	 */
 	public supportsKeepAlive(): boolean {
 		return true;
 	}
 
-	public lostConnection(connection: SignalRInterfaces.Connection) {
-		this.reconnect(connection);
+	/**
+	 * Called by SignalR when keep-alive indicates that the connection has been lost.
+	 */
+	public lostConnection() {
+		this.reconnect(this._signalRConnection);
 	}
 
 	private getWebSocketUrl(connection: SignalRInterfaces.Connection, reconnecting: boolean): string {

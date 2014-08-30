@@ -9,6 +9,8 @@ import SignalRProtocol = require("./SignalR.Protocol");
  * A base class for SignalR transports.
  */
 export class TransportBase extends events.EventEmitter {
+	public _signalRConnection: SignalRInterfaces.Connection;
+
 	/**
 	 * The name of the transport.
 	 */
@@ -69,14 +71,18 @@ export class TransportBase extends events.EventEmitter {
 
 	/**
 	 * Aborts the connection.
-	 * @param connection The SignalR connection
 	 */
-	public abort(connection: SignalRInterfaces.Connection): Q.Promise<any> {
-		var abortUrl: string = connection.baseUrl + "/abort?transport=" + this.name;
-		abortUrl = connection.prepareQueryString(abortUrl);
+	public abort(): Q.Promise<any> {
+		if (!!this._signalRConnection) {
+			var abortUrl: string = this._signalRConnection.baseUrl + "/abort?transport=" + this.name;
+			abortUrl = this._signalRConnection.prepareQueryString(abortUrl);
 
-		var deferred: Q.Deferred<any> = Q.defer();
-		SignalRHelpers.createPostRequest(abortUrl, deferred);
-		return deferred.promise;
+			var deferred: Q.Deferred<any> = Q.defer();
+			SignalRHelpers.createPostRequest(abortUrl, deferred);
+			return deferred.promise;
+		}
+		else {
+			return Q.resolve(null);
+		}
 	}
 }

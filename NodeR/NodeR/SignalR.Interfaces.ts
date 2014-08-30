@@ -20,17 +20,57 @@ export class ConnectionEvents {
 	public static OnConnectionSlow: string = "onConnectionSlow";
 }
 
+
+/**
+ * The response to a negotiate request.
+ */
 export interface NegotiateResponse {
+	/**
+	 * The connection id.
+	 */
 	ConnectionId?: string;
+
+	/**
+	 * The connection token.
+	 */
 	ConnectionToken?: string;
+
+	/**
+	 * The disconnect timeout.
+	 */
 	DisconnectTimeout?: number;
+
+	/**
+	 * The keep-alive timeout.
+	 */
 	KeepAliveTimeout?: number;
+
+	/**
+	 * The long-poll delay.
+	 */
 	LongPollDelay?: number;
+
+	/**
+	 * The SignalR protocol version.
+	 */
 	ProtocolVersion?: string;
+
+	/**
+	 * The transport timeout, in seconds.
+	 */
 	TransportConnectTimeout?: number;
+
+	/**
+	 * Indicates whether the client should attempt to connect with the websockets transport.
+	 */
 	TryWebSockets?: boolean;
+
+	/**
+	 * The application-relative url, i.e. /signalr
+	 */
 	Url?: string;
 }
+
 
 export enum ConnectionState {
 	Connecting,
@@ -38,6 +78,7 @@ export enum ConnectionState {
 	Reconnecting,
 	Disconnected
 }
+
 
 /**
  * Represents a SignalR connection.
@@ -147,16 +188,65 @@ export interface Connection extends NodeJS.EventEmitter {
 	verifyLastActive(): boolean;
 }
 
+
+/**
+ * Represents a SignalR transport.
+ */
 export interface Transport extends NodeJS.EventEmitter {
+	/**
+	 * The name of the transport.
+	 */
 	name: string;
 
-	isSupported(negotiateResponse: NegotiateResponse): boolean;
-	supportsKeepAlive(): boolean;
-	send(connection: Connection, data: any);
+	/**
+	 * Aborts the connection.
+	 */
+	abort(): Q.Promise<any>;
+
+	/**
+	 * Called by SignalR when keep-alive indicates that the connection has been lost.
+	 */
+	lostConnection();
+
+	/**
+	 * Sends data via the transport.
+	 * @param data The data to send
+	 */
+	send(data: any);
+
+	/**
+	 * Starts the transport.
+	 * @param connection The SignalR connection
+	 * @param reconnecting Whether this is a reconnect attempt
+	 */
 	start(connection: Connection, reconnecting?: boolean): Q.Promise<any>;
+
+	/**
+	 * Stops the transport.
+	 */
 	stop(): void;
-	abort(connection: Connection): Q.Promise<any>;
-	lostConnection(connection: Connection);
+
+	/**
+	 * Indicates whether the transport supports keep-alive.
+	 */
+	supportsKeepAlive(): boolean;
+}
+
+
+/**
+ * Static Transport methods.
+ */
+export interface TransportStatic {
+	/**
+	 * Construct a new instance of the transport.
+	 */
+	new (): Transport;
+
+	/**
+	 * Determines whether the transport is supported.
+	 * @param negotiateResponse The negotiate response from the server
+	 */
+	isSupported(negotiateResponse: NegotiateResponse): boolean;
 }
 
 
@@ -189,6 +279,7 @@ export interface MinifiedServerHubInvocation {
 	 */
 	S?: any;
 }
+
 
 /**
  * Represents a client method invoked by the server
@@ -240,6 +331,7 @@ export interface ClientHubInvocation {
 	State: any;
 }
 
+
 export interface MinifiedServerHubResponse {
 	S: string;
 	R: any;
@@ -253,6 +345,7 @@ export interface MinifiedServerHubResponse {
 	T: string;
 	D: string;
 }
+
 
 export interface ServerHubResponse {
 	State: string;
@@ -277,6 +370,7 @@ export interface MinifiedSignalRMessage {
 	L: number;
 	G: string;
 }
+
 
 /**
  * Represents a message from the server.

@@ -18,7 +18,7 @@ class MagicStrings {
 export class SignalRClient implements SignalRInterfaces.HubConnection {
 	public static DefaultProtocolVersion: string = "1.4";
 
-	private _installedTransports: SignalRInterfaces.Transport[];
+	private _installedTransports: SignalRInterfaces.TransportStatic[];
 	private _negotiateRequest: http.ClientRequest;
 	private _startDeferred: Q.Deferred<any>;
 	private _connection: SignalRConnection.Connection;
@@ -26,8 +26,10 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 	private _invocationCallbackId: number = 0;
 	private _invocationCallbacks: { [id: string]: (minifedResult: SignalRInterfaces.MinifiedServerHubResponse) => void; } = {};
 	private _hubs: { [name: string]: SignalRHubs.SignalRHub; } = {};
+	private _connectionTimer: NodeJS.Timer;
+	private _transportConnectTimeout: number;
 
-	constructor(transports: SignalRInterfaces.Transport[]) {
+	constructor(transports: SignalRInterfaces.TransportStatic[]) {
 		this._installedTransports = transports;
 	}
 
@@ -36,9 +38,11 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 
 		var transports: SignalRInterfaces.Transport[] = [];
 
-		this.negotiate(baseUrl, connectionData)
+		this._negotiate(baseUrl, connectionData)
 			.then((negotiateResponse: SignalRInterfaces.NegotiateResponse) => {
 				delete this._negotiateRequest;
+
+				this._transportConnectTimeout = negotiateResponse.TransportConnectTimeout * 1000;
 
 				// get supported transports
 				var supportedTransports: SignalRInterfaces.Transport[] = this.getSupportedTransports(negotiateResponse);
@@ -97,9 +101,11 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 					}
 				});
 
+				// resolve promise
 				this._startDeferred.resolve(true);
 			})
 			.fail((error: Error) => {
+				// reject
 				this._startDeferred.reject(error);
 			})
 			.finally(() => {
@@ -139,7 +145,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 		if (!!this._connectedTransport) {
 			var payload: string = SignalRHelpers.stringifyData(data);
 
-			this._connectedTransport.send(this._connection, payload);
+			this._connectedTransport.send(payload);
 		}
 	}
 
@@ -181,31 +187,54 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 
 	private _tryTransports(transports: SignalRInterfaces.Transport[], index: number, deferred: Q.Deferred<SignalRInterfaces.Transport>) {
 		var transport: SignalRInterfaces.Transport = transports[index];
+		var initializationComplete: boolean = false;
+
+		var tryNextTransport = () => {
+			if (index === transports.length - 1) {
+				// all transports failed
+				deferred.reject(SignalRErrors.createError(SignalRErrors.Messages.NoTransportOnInit, null, this));
+			}
+			else {
+				this._tryTransports(transports, index + 1, deferred);
+			}
+		};
+
+		var onFailed = () => {
+			if (!initializationComplete) {
+				initializationComplete = true;
+				clearTimeout(<any>this._connectionTimer);
+				transport.stop();
+				tryNextTransport();
+			}
+		};
+
+		// start connection timer
+		this._connectionTimer = <any>setTimeout(() => {
+			this.log(transport.name + " timed out when trying to connect.");
+			onFailed();
+		}, this._transportConnectTimeout);
+
+		// try to start the transport
 		transport.start(this._connection)
 			.then(() => {
+				initializationComplete = true;
+				clearTimeout(<any>this._connectionTimer);
 				deferred.resolve(transport);
 			})
 			.fail((error: Error) => {
 				this.log(transport.name + " transport failed with error '" + error.message + "' when attempting to start.");
-
-				if (index === transports.length - 1) {
-					// all transports failed
-					deferred.reject(SignalRErrors.createError(SignalRErrors.Messages.NoTransportOnInit, null, this));
-				}
-				else {
-					this._tryTransports(transports, index + 1, deferred);
-				}
+				onFailed();
 			});
 	}
 
 	private getSupportedTransports(negotiateResponse: SignalRInterfaces.NegotiateResponse): SignalRInterfaces.Transport[]{
 		var results: SignalRInterfaces.Transport[] = [];
 
-		var transports: SignalRInterfaces.Transport[] = this._installedTransports;
-		if (Array.isArray(transports)) {
-			for (var i = 0; i < transports.length; i++) {
-				if (transports[i].isSupported(negotiateResponse)) {
-					results.push(transports[i]);
+		var transportFactories: SignalRInterfaces.TransportStatic[] = this._installedTransports;
+		if (Array.isArray(transportFactories)) {
+			for (var i = 0; i < transportFactories.length; i++) {
+				if (transportFactories[i].isSupported(negotiateResponse)) {
+					results.push(new transportFactories[i]());
 				}
 			}
 		}
@@ -213,7 +242,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 		return results;
 	}
 
-	public negotiate(baseUrl: string, connectionData?: any): Q.Promise<SignalRInterfaces.NegotiateResponse> {
+	private _negotiate(baseUrl: string, connectionData?: any): Q.Promise<SignalRInterfaces.NegotiateResponse> {
 		var protocolVersion: string = SignalRClient.DefaultProtocolVersion;
 
 		var deferred: Q.Deferred<SignalRInterfaces.NegotiateResponse> = Q.defer();

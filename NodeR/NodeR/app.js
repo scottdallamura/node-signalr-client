@@ -5,7 +5,7 @@ var WebSocketTransport = require("./SignalR.Transports.WebSockets");
 console.log('Hello world');
 
 var _name;
-var signalRClient = new SignalRClient.SignalRClient([new WebSocketTransport.WebSocketsTransport()]);
+var signalRClient = new SignalRClient.SignalRClient([WebSocketTransport.WebSocketsTransport]);
 
 function getName() {
     return SignalRHelpers.getConsoleInput("Enter your name: ");
