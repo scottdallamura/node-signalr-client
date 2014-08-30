@@ -137,43 +137,6 @@ export function getConsoleInput(prompt: string): Q.Promise<string> {
 	return deferred.promise;
 }
 
-export function expandHubResponse(minified: SignalRInterfaces.MinifiedHubResponse): SignalRInterfaces.HubResponse {
-	return {
-		State: minified.S,
-		Result: minified.R,
-		Progress: !!minified.P ? {
-			Id: minified.P.I,
-			Data: minified.P.D
-		} : null,
-		Id: minified.I,
-		IsHubException: minified.H,
-		Error: minified.E,
-		StackTrace: minified.T,
-		ErrorData: minified.D
-	};
-}
-
-export function expandClientHubInvocation(minified: SignalRInterfaces.MinifiedClientHubInvocation): SignalRInterfaces.ClientHubInvocation {
-	return {
-		Hub: minified.H,
-		Method: minified.M,
-		Args: minified.A,
-		State: minified.S
-	};
-}
-
-export function expandPersistentResponse(minified: SignalRInterfaces.MinifiedPersistentResponse): SignalRInterfaces.PersistentResponse {
-	return {
-		MessageId: minified.C,
-		Messages: minified.M,
-		Initialized: !!minified.S,
-		Disconnect: !!minified.D,
-		ShouldReconnect: !!minified.T,
-		LongPollDelay: minified.L,
-		GroupsToken: minified.G
-	};
-}
-
 export function extendState(targetState: any, newState: any) {
 	for (var key in newState) {
 		if (newState.hasOwnProperty(key)) {
@@ -194,4 +157,49 @@ export function format(template: string, ...args: any[]) {
 		template = template.replace("{" + i + "}", args[i]);
 	}
 	return template;
+}
+
+export function stringifyData(data: any): string {
+	var result: string;
+	if (typeof (data) === "string" || typeof (data) === "undefined" || data === null) {
+		result = data;
+	}
+	else {
+		result = JSON.stringify(data);
+	}
+
+	return result;
+}
+
+export function parseResponse(response: any): any {
+	if (!response) {
+		return response;
+	}
+	else if (typeof response === "string") {
+		return JSON.parse(response);
+	}
+	else {
+		return response;
+	}
+}
+
+/**
+ * Appends a query string fragment to a URL.
+ * @param url The url
+ * @param queryString The query string
+ */
+export function addQueryString(url: string, queryString: string): string {
+	var appender: string = url.indexOf("?") !== -1 ? "&" : "?";
+
+	if (!queryString) {
+		return url;
+	}
+	else {
+		var firstChar: string = queryString.charAt(0);
+		if (firstChar === "?" || firstChar === "&") {
+			appender = "";
+		}
+
+		return url + appender + queryString;
+	}
 }

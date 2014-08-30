@@ -21,10 +21,8 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 	}
 
 	public send(connection: SignalRInterfaces.Connection, data: any) {
-		var payload: string = this.stringifyData(data);
-
 		try {
-			this._websocketConnection.sendUTF(payload);
+			this._websocketConnection.sendUTF(data);
 		}
 		catch (ex) {
 			this.emit(SignalRInterfaces.TransportEvents.OnError, SignalRErrors.createError(SignalRErrors.Messages.WebSocketsInvalidState, ex, this));
@@ -72,19 +70,21 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 				});
 
 				wsConnection.on("message", (data: websocket.IMessage) => {
-					var message: any = JSON.parse(data.utf8Data);
+					var message: any = SignalRHelpers.parseResponse(data.utf8Data);
 
 					if (!!message) {
 						if (SignalRHelpers.isEmptyObject(message) || message.M) {
-							this.processMessages(connection, message);
+							// process the message. the callback will be invoked when the server indicates that the connection is ready
+							this.processMessages(connection, message, () => {
+								deferred.resolve(this);
+							});
 						}
 						else {
+							// trigger onReceived for callbacks from outgoing hub calls
 							this.emit(SignalRInterfaces.TransportEvents.OnReceived, message);
 						}
 					}
 				});
-
-				deferred.resolve(this);
 			});
 
 			var websocketUrl: string = this.getWebSocketUrl(connection, false);
@@ -130,7 +130,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 		}
 
 		result += "?" + queryString;
-		result = SignalRTransports.prepareQueryString(connection, result);
+		result = connection.prepareQueryString(result);
 		result += "&tid=" + Math.floor(Math.random() * 11);
 
 		return result;

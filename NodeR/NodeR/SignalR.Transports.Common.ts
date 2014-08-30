@@ -3,16 +3,31 @@ import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
 import SignalRHelpers = require("./SignalR.Helpers");
 import SignalRErrors = require("./SignalR.Errors");
+import SignalRProtocol = require("./SignalR.Protocol");
 
+/**
+ * A base class for SignalR transports.
+ */
 export class TransportBase extends events.EventEmitter {
+	/**
+	 * The name of the transport.
+	 */
 	public name: string;
 
+	/**
+	 * Create a new instance of the transport.
+	 * @param name The name of the transport
+	 */
 	constructor(name: string) {
 		super();
 
 		this.name = name;
 	}
 
+	/**
+	 * Initiates the reconnection process.
+	 * @param connection The SignalR connection
+	 */
 	public reconnect(connection: SignalRInterfaces.Connection) {
 		if (connection.isConnectedOrReconnecting()) {
 			if (connection.verifyLastActive()) {
@@ -21,23 +36,17 @@ export class TransportBase extends events.EventEmitter {
 		}
 	}
 
-	public stringifyData(data: any): string {
-		var payload: string;
-		if (typeof (data) === "string" || typeof (data) === "undefined" || data === null) {
-			payload = data;
-		}
-		else {
-			payload = JSON.stringify(data);
-		}
-
-		return payload;
-	}
-
-	public processMessages(connection: SignalRInterfaces.Connection, data: SignalRInterfaces.MinifiedPersistentResponse) {
+	/**
+	 * Processes messages received from the server.
+	 * @param connection The SignalR connection
+	 * @param data The data received from the server
+	 * @param onInitialized A method that will be invoked when the server sends a message with the Initialized flag set
+	 */
+	public processMessages(connection: SignalRInterfaces.Connection, data: SignalRInterfaces.MinifiedSignalRMessage, onInitialized: () => void) {
 		connection.markLastMessage();
 
 		if (!!data) {
-			var persistentResponse: SignalRInterfaces.PersistentResponse = SignalRHelpers.expandPersistentResponse(data);
+			var persistentResponse: SignalRInterfaces.SignalRMessage = SignalRProtocol.expandSignalRMessage(data);
 
 			connection.updateGroups(persistentResponse.GroupsToken);
 
@@ -49,48 +58,25 @@ export class TransportBase extends events.EventEmitter {
 				for (var i = 0; i < persistentResponse.Messages.length; i++) {
 					this.emit(SignalRInterfaces.TransportEvents.OnReceived, persistentResponse.Messages[i]);
 				}
+
+				// handle the Initialized flag
+				if (persistentResponse.Initialized && !!onInitialized) {
+					onInitialized();
+				}
 			}
 		}
 	}
 
+	/**
+	 * Aborts the connection.
+	 * @param connection The SignalR connection
+	 */
 	public abort(connection: SignalRInterfaces.Connection): Q.Promise<any> {
 		var abortUrl: string = connection.baseUrl + "/abort?transport=" + this.name;
-		abortUrl = prepareQueryString(connection, abortUrl);
+		abortUrl = connection.prepareQueryString(abortUrl);
 
 		var deferred: Q.Deferred<any> = Q.defer();
 		SignalRHelpers.createPostRequest(abortUrl, deferred);
 		return deferred.promise;
 	}
-}
-
-export function addQueryString(url: string, queryString: string): string {
-	var appender: string = url.indexOf("?") !== -1 ? "&" : "?";
-
-	if (!queryString) {
-		return url;
-	}
-	else {
-		var firstChar: string = queryString.charAt(0);
-		if (firstChar === "?" || firstChar === "&") {
-			appender = "";
-		}
-
-		return url + appender + queryString;
-	}
-}
-
-export function prepareQueryString(connection: SignalRInterfaces.Connection, url: string): string {
-	var preparedUrl: string = addQueryString(url, "clientProtocol=" + connection.clientProtocol);
-
-	preparedUrl = addQueryString(preparedUrl, connection.queryString);
-
-	if (!!connection.token) {
-		preparedUrl += "&connectionToken=" + encodeURIComponent(connection.token);
-	}
-
-	if (!!connection.data) {
-		preparedUrl += "&connectionData=" + encodeURIComponent(connection.data);
-	}
-
-	return preparedUrl;
 }

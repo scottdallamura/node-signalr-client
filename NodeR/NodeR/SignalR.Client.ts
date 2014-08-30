@@ -8,6 +8,7 @@ import SignalRInterfaces = require("./SignalR.Interfaces");
 import SignalRHubs = require("./SignalR.Hubs");
 import SignalRConnection = require("./SignalR.Connection");
 import SignalRHelpers = require("./SignalR.Helpers");
+import SignalRProtocol = require("./SignalR.Protocol");
 import SignalRErrors = require("./SignalR.Errors");
 
 class MagicStrings {
@@ -23,7 +24,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 	private _connection: SignalRConnection.Connection;
 	private _connectedTransport: SignalRInterfaces.Transport;
 	private _invocationCallbackId: number = 0;
-	private _invocationCallbacks: { [id: string]: (minifedResult: SignalRInterfaces.MinifiedHubResponse) => void; } = {};
+	private _invocationCallbacks: { [id: string]: (minifedResult: SignalRInterfaces.MinifiedServerHubResponse) => void; } = {};
 	private _hubs: { [name: string]: SignalRHubs.SignalRHub; } = {};
 
 	constructor(transports: SignalRInterfaces.Transport[]) {
@@ -79,7 +80,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 						}
 						else {
 							// client method invoked from server
-							var invocation: SignalRInterfaces.ClientHubInvocation = SignalRHelpers.expandClientHubInvocation(data);
+							var invocation: SignalRInterfaces.ClientHubInvocation = SignalRProtocol.expandClientHubInvocation(data);
 							this.log("Triggering client hub event '" + invocation.Method + "' on hub '" + invocation.Hub + "'.");
 
 							// normalize hub name to lowercase
@@ -136,19 +137,30 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 
 	public send(data: any) {
 		if (!!this._connectedTransport) {
-			this._connectedTransport.send(this._connection, data);
+			var payload: string = SignalRHelpers.stringifyData(data);
+
+			this._connectedTransport.send(this._connection, payload);
 		}
 	}
 
+	/**
+	 * Gets a new callback id.
+	 */
 	public getInvocationCallbackId(): number {
 		var result: number = this._invocationCallbackId;
 		this._invocationCallbackId += 1;
 		return result;
 	}
 
-	public sendWithCallback(data: any, invocationCallbackId: number, callback: (minified: SignalRInterfaces.MinifiedHubResponse) => void): boolean {
+	/**
+	 * Sends a SignalR message.
+	 * @param data The data to send
+	 * @param callback The callback to invoke when a response is received
+	 */
+	public sendWithCallback(data: SignalRInterfaces.MinifiedServerHubInvocation, callback: (minified: SignalRInterfaces.MinifiedServerHubResponse) => void): boolean {
 		if (!!this._connectedTransport) {
-			this._invocationCallbacks[this._invocationCallbackId.toString()] = callback;
+			var invocationCallbackId: number = data.I;
+			this._invocationCallbacks[invocationCallbackId.toString()] = callback;
 
 			this.send(data);
 
@@ -250,6 +262,10 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 		return deferred.promise;
 	}
 
+	/**
+	 * Logs a message.
+	 * @param message The message
+	 */
 	public log(message: string) {
 		console.log(message);
 	}
