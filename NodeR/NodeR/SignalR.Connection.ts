@@ -98,6 +98,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 
 	/**
 	 * Creates a new connection.
+	 * @param logger The logger
 	 * @param baseUrl The base url, i.e. https://myserver.com/signalr
 	 * @param negotiateResponse The response to the negotiate request
 	 * @param connectiondata Connection-specific data

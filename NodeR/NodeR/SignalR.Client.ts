@@ -37,9 +37,16 @@ class BasicLogger implements SignalRInterfaces.Logger {
 	}
 }
 
+
+/**
+ * A SignalR client for node.js
+ */
 export class SignalRClient implements SignalRInterfaces.HubConnection {
 	public static DefaultProtocolVersion: string = "1.4";
 
+	/**
+	 * The logger.
+	 */
 	public logger: SignalRInterfaces.Logger;
 
 	private _installedTransports: SignalRInterfaces.TransportStatic[];
@@ -53,12 +60,22 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 	private _connectionTimer: NodeJS.Timer;
 	private _transportConnectTimeout: number;
 
+	/**
+	 * Construct a new SignalR client.
+	 * @param transports The transports to attempt
+	 * @param logger The logger
+	 */
 	constructor(transports: SignalRInterfaces.TransportStatic[], logger?: SignalRInterfaces.Logger) {
 		this._installedTransports = transports;
 
 		this.logger = !!logger ? logger : new BasicLogger();
 	}
 
+	/**
+	 * Starts a SignalR session.
+	 * @param baseUrl The url to the application hosting SignalR, i.e. http://myserver.com
+	 * @param connectionData Session-specific data
+	 */
 	public start(baseUrl: string, connectionData: any): Q.Promise<any> {
 		this._startDeferred = this._startDeferred || Q.defer();
 
@@ -141,7 +158,11 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 		return this._startDeferred.promise;
 	}
 
-	public createHub(hubName: string) {
+	/**
+	 * Creates a new SignalR hub and associates it with this client.
+	 * @param hubName The name of the hub
+	 */
+	public createHub(hubName: string): SignalRHubs.SignalRHub {
 		var hub: SignalRHubs.SignalRHub = this._hubs[hubName];
 
 		if (!hub) {
@@ -152,6 +173,9 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 		return hub;
 	}
 
+	/**
+	 * Stops the SignalR session.
+	 */
 	public stop() {
 		if (!!this._startDeferred) {
 			this._startDeferred.reject(SignalRErrors.createError(SignalRErrors.Messages.StoppedWhileStarting, null, this));
@@ -164,14 +188,6 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 
 		if (!!this._connection) {
 			this._connection.stop(true);
-		}
-	}
-
-	public send(data: any) {
-		if (!!this._connectedTransport) {
-			var payload: string = SignalRHelpers.stringifyData(data);
-
-			this._connectedTransport.send(payload);
 		}
 	}
 
@@ -194,12 +210,20 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 			var invocationCallbackId: number = data.I;
 			this._invocationCallbacks[invocationCallbackId.toString()] = callback;
 
-			this.send(data);
+			this._send(data);
 
 			return true;
 		}
 		else {
 			return false;
+		}
+	}
+
+	private _send(data: any) {
+		if (!!this._connectedTransport) {
+			var payload: string = SignalRHelpers.stringifyData(data);
+
+			this._connectedTransport.send(payload);
 		}
 	}
 
