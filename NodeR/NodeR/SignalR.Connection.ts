@@ -30,6 +30,7 @@ class KeepAlive {
 	}
 }
 
+
 /**
  * Represents a SignalR connection.
  */
@@ -68,6 +69,11 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 	public groupsToken: string;
 
 	/**
+	 * The logger.
+	 */
+	public logger: SignalRInterfaces.Logger;
+
+	/**
 	 * The most recent message id.
 	 */
 	public messageId: string;
@@ -96,9 +102,10 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 	 * @param negotiateResponse The response to the negotiate request
 	 * @param connectiondata Connection-specific data
 	 */
-	constructor(baseUrl: string, negotiateResponse: SignalRInterfaces.NegotiateResponse, connectionData: any) {
+	constructor(logger: SignalRInterfaces.Logger, baseUrl: string, negotiateResponse: SignalRInterfaces.NegotiateResponse, connectionData: any) {
 		super();
 
+		this.logger = logger;
 		this.baseUrl = baseUrl;
 		this.connectionUrl = url.parse(baseUrl);
 		this.clientProtocol = negotiateResponse.ProtocolVersion;
@@ -110,14 +117,6 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 		this._disconnectTimeout = negotiateResponse.DisconnectTimeout * 1000;
 		this._keepAlive = new KeepAlive(negotiateResponse);
 		this._reconnectWindow = this._disconnectTimeout + (this._keepAlive.timeout || 0);
-	}
-
-	/**
-	 * Logs a message.
-	 * @param message The message
-	 */
-	public log(message: string) {
-		console.log(message);
 	}
 
 	/**
@@ -163,7 +162,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 	public verifyLastActive(): boolean {
 		if (new Date().getTime() - this._lastActiveAt >= this._reconnectWindow) {
 			var message: string = SignalRHelpers.format(SignalRErrors.Messages.ReconnectWindowTimeout, new Date(this._lastActiveAt), this._reconnectWindow);
-			this.log(message);
+			this.logger.warn(message);
 
 			this.emit(SignalRInterfaces.TransportEvents.OnError, SignalRErrors.createError(message, "TimeoutException", this));
 
@@ -195,7 +194,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 		var promise: Q.Promise<any> = Q.resolve(true);
 
 		if (this._connectionState !== SignalRInterfaces.ConnectionState.Disconnected) {
-			this.log("Stopping connection.");
+			this.logger.info("Stopping connection.");
 
 			this.changeState(this._connectionState, SignalRInterfaces.ConnectionState.Disconnected);
 
@@ -235,7 +234,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 				this._transport.stop();
 
 				if (this.ensureReconnectingState()) {
-					this.log(this._transport.name + " reconnecting.");
+					this.logger.info(this._transport.name + " reconnecting.");
 					this._transport.start(this, true);
 				}
 			}
@@ -312,13 +311,13 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 		if (this._connectionState === SignalRInterfaces.ConnectionState.Connected) {
 			var elapsedTime: number = new Date().getTime() - this._lastMessageAt;
 			if (elapsedTime >= keepAlive.timeout) {
-				this.log("Keep alive timed out.  Notifying transport that connection has been lost.");
+				this.logger.warn("Keep alive timed out.  Notifying transport that connection has been lost.");
 
 				this._transport.lostConnection();
 			}
 			else if (elapsedTime >= keepAlive.timeoutWarning) {
 				if (!keepAlive.userNotified) {
-					this.log("Keep alive has been missed, connection may be dead/slow.");
+					this.logger.warn("Keep alive has been missed, connection may be dead/slow.");
 
 					this.emit(SignalRInterfaces.ConnectionEvents.OnConnectionSlow, this);
 
@@ -344,10 +343,10 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 
 				this.addListener(SignalRInterfaces.ConnectionEvents.OnReconnect, this._keepAliveMonitor);
 
-				this.log("Now monitoring keep alive with a warning timeout of " + this._keepAlive.timeoutWarning + " and a connection lost timeout of " + this._keepAlive.timeout + ".");
+				this.logger.info("Now monitoring keep alive with a warning timeout of " + this._keepAlive.timeoutWarning + " and a connection lost timeout of " + this._keepAlive.timeout + ".");
 			}
 			else {
-				this.log("Tried to monitor keep alive but it's already being monitored.");
+				this.logger.warn("Tried to monitor keep alive but it's already being monitored.");
 			}
 		}
 	}
@@ -359,7 +358,7 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 			this.removeListener(SignalRInterfaces.ConnectionEvents.OnReconnect, this._keepAliveMonitor);
 			this._keepAliveMonitor = null;
 
-			this.log("Stopping the monitoring of the keep alive.");
+			this.logger.info("Stopping the monitoring of the keep alive.");
 		}
 	}
 

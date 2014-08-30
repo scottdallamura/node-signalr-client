@@ -121,7 +121,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 		this._signalRConnection.clearReconnectTimer();
 
 		if (!!this._websocketConnection) {
-			this._signalRConnection.log("Closing the WebSocket.");
+			this._signalRConnection.logger.info("Closing the WebSocket.");
 			this._websocketConnection.close();
 			this._websocketConnection = null;
 		}

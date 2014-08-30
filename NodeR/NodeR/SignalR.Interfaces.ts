@@ -115,6 +115,11 @@ export interface Connection extends NodeJS.EventEmitter {
 	groupsToken: string;
 
 	/**
+	 * The logger.
+	 */
+	logger: Logger;
+
+	/**
 	 * The most recent message id.
 	 */
 	messageId: string;
@@ -141,12 +146,6 @@ export interface Connection extends NodeJS.EventEmitter {
 	 * Indicates whether the connection is currently connected or attempting to reconnect.
 	 */
 	isConnectedOrReconnecting(): boolean;
-
-	/**
-	 * Logs a message.
-	 * @param message The message
-	 */
-	log(message: string): void;
 
 	/**
 	 * Updates the "most recent message received" timestamp.
@@ -421,15 +420,14 @@ export interface SignalRMessage {
  */
 export interface HubConnection {
 	/**
+	 * The logger.
+	 */
+	logger: Logger;
+
+	/**
 	 * Gets a new callback id.
 	 */
 	getInvocationCallbackId(): number;
-
-	/**
-	 * Logs a message.
-	 * @param message The message
-	 */
-	log(message: string): void;
 
 	/**
 	 * Sends a SignalR message.
@@ -437,4 +435,16 @@ export interface HubConnection {
 	 * @param callback The callback to invoke when a response is received
 	 */
 	sendWithCallback(data: MinifiedServerHubInvocation, callback: (minified: MinifiedServerHubResponse) => void): boolean;
+}
+
+
+/**
+ * Logging interface.
+ */
+export interface Logger {
+	trace(message: string);
+	debug(message: string);
+	info(message: string);
+	warn(message: string);
+	error(message: string);
 }

@@ -15,8 +15,32 @@ class MagicStrings {
 	public static NegotiateAborted: string = "__Negotiate Aborted__";
 }
 
+class BasicLogger implements SignalRInterfaces.Logger {
+	public trace(message: string) {
+		console.log(message);
+	}
+
+	public debug(message: string) {
+		console.log(message);
+	}
+
+	public info(message: string) {
+		console.log(message);
+	}
+
+	public warn(message: string) {
+		console.log(message);
+	}
+
+	public error(message: string) {
+		console.log(message);
+	}
+}
+
 export class SignalRClient implements SignalRInterfaces.HubConnection {
 	public static DefaultProtocolVersion: string = "1.4";
+
+	public logger: SignalRInterfaces.Logger;
 
 	private _installedTransports: SignalRInterfaces.TransportStatic[];
 	private _negotiateRequest: http.ClientRequest;
@@ -29,8 +53,10 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 	private _connectionTimer: NodeJS.Timer;
 	private _transportConnectTimeout: number;
 
-	constructor(transports: SignalRInterfaces.TransportStatic[]) {
+	constructor(transports: SignalRInterfaces.TransportStatic[], logger?: SignalRInterfaces.Logger) {
 		this._installedTransports = transports;
+
+		this.logger = !!logger ? logger : new BasicLogger();
 	}
 
 	public start(baseUrl: string, connectionData: any): Q.Promise<any> {
@@ -85,7 +111,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 						else {
 							// client method invoked from server
 							var invocation: SignalRInterfaces.ClientHubInvocation = SignalRProtocol.expandClientHubInvocation(data);
-							this.log("Triggering client hub event '" + invocation.Method + "' on hub '" + invocation.Hub + "'.");
+							this.logger.debug("Triggering client hub event '" + invocation.Method + "' on hub '" + invocation.Hub + "'.");
 
 							// normalize hub name to lowercase
 							var hubName: string = invocation.Hub.toLowerCase();
@@ -210,7 +236,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 
 		// start connection timer
 		this._connectionTimer = <any>setTimeout(() => {
-			this.log(transport.name + " timed out when trying to connect.");
+			this.logger.warn(transport.name + " timed out when trying to connect.");
 			onFailed();
 		}, this._transportConnectTimeout);
 
@@ -222,7 +248,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 				deferred.resolve(transport);
 			})
 			.fail((error: Error) => {
-				this.log(transport.name + " transport failed with error '" + error.message + "' when attempting to start.");
+				this.logger.error(transport.name + " transport failed with error '" + error.message + "' when attempting to start.");
 				onFailed();
 			});
 	}
@@ -279,7 +305,7 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 				}
 				else {
 					// set up the connection data
-					this._connection = new SignalRConnection.Connection(baseUrl, negotiateResponse, connectionData);
+					this._connection = new SignalRConnection.Connection(this.logger, baseUrl, negotiateResponse, connectionData);
 
 					deferred.resolve(negotiateResponse);
 				}
@@ -289,13 +315,5 @@ export class SignalRClient implements SignalRInterfaces.HubConnection {
 			});
 
 		return deferred.promise;
-	}
-
-	/**
-	 * Logs a message.
-	 * @param message The message
-	 */
-	public log(message: string) {
-		console.log(message);
 	}
 }

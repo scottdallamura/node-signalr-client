@@ -53,17 +53,17 @@ export class SignalRHub extends events.EventEmitter {
 			}
 			else if (!!result.Error) {
 				if (!!result.StackTrace) {
-					this._hubConnection.log(result.Error + "\n" + result.StackTrace + ".");
+					this._hubConnection.logger.error(result.Error + "\n" + result.StackTrace + ".");
 				}
 
 				var error: Error = SignalRErrors.createError(result.Error, result.IsHubException ? "HubException" : "Exception", this);
-				this._hubConnection.log(this.name + "." + method + " failed to execute. Error: " + error.message);
+				this._hubConnection.logger.error(this.name + "." + method + " failed to execute. Error: " + error.message);
 
 				deferred.reject(error);
 			}
 			else {
 				// success
-				this._hubConnection.log("Invoked " + this.name + "." + method);
+				this._hubConnection.logger.debug("Invoked " + this.name + "." + method);
 
 				deferred.resolve(result.Result);
 			}
