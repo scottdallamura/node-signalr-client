@@ -1,4 +1,11 @@
 ﻿import url = require("url");
+import http = require("http");
+var Q = require("q");
+
+export interface HttpResponse {
+	response?: http.ClientResponse;
+	content?: string;
+}
 
 export class TransportEvents {
 	public static OnReceived: string = "onReceived";

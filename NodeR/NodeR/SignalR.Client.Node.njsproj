@@ -3,7 +3,7 @@
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
-    <Name>NodeR</Name>
+    <Name>SignalR.Client.Node</Name>
     <RootNamespace>NodeR</RootNamespace>
     <EnableTypeScript>true</EnableTypeScript>
     <TypeScriptSourceMap>true</TypeScriptSourceMap>
@@ -14,7 +14,8 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>8378fe5f-af5a-4041-8f45-037b0b84e449</ProjectGuid>
-    <ProjectHome>.</ProjectHome>
+    <ProjectHome>
+    </ProjectHome>
     <StartupFile>app.js</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
@@ -35,9 +36,8 @@
   <ItemGroup>
     <Content Include="package.json" />
     <Content Include="README.md" />
-    <TypeScriptCompile Include="NodeR.Errors.ts" />
-    <TypeScriptCompile Include="NodeR.Helpers.ts" />
-    <TypeScriptCompile Include="NodeR.Interfaces.ts" />
+    <TypeScriptCompile Include="SignalR.Errors.ts" />
+    <TypeScriptCompile Include="SignalR.Helpers.ts" />
     <TypeScriptCompile Include="SignalR.Connection.ts" />
     <TypeScriptCompile Include="SignalR.Hubs.ts" />
     <TypeScriptCompile Include="SignalR.Transports.Common.ts" />
@@ -54,7 +54,7 @@
     <Folder Include="typings\node\" />
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="NodeR.ts" />
+    <TypeScriptCompile Include="SignalR.Client.ts" />
     <TypeScriptCompile Include="typings\node\node.d.ts" />
     <TypeScriptCompile Include="typings\q\Q.d.ts" />
   </ItemGroup>

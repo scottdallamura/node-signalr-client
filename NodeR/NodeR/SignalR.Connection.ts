@@ -1,8 +1,8 @@
 ﻿import url = require("url");
 import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
-import NodeRHelpers = require("./NodeR.Helpers");
-import NodeRErrors = require("./NodeR.Errors");
+import SignalRHelpers = require("./SignalR.Helpers");
+import SignalRErrors = require("./SignalR.Errors");
 
 var KeepAliveWarning = 2 / 3;
 
@@ -102,10 +102,10 @@ export class Connection extends events.EventEmitter implements SignalRInterfaces
 
 	public verifyLastActive(): boolean {
 		if (new Date().getTime() - this._lastActiveAt >= this.reconnectWindow) {
-			var message: string = NodeRHelpers.format(NodeRErrors.Messages.ReconnectWindowTimeout, new Date(this._lastActiveAt), this.reconnectWindow);
+			var message: string = SignalRHelpers.format(SignalRErrors.Messages.ReconnectWindowTimeout, new Date(this._lastActiveAt), this.reconnectWindow);
 			this.log(message);
 
-			this.emit(SignalRInterfaces.TransportEvents.OnError, NodeRErrors.createError(message, "TimeoutException", this));
+			this.emit(SignalRInterfaces.TransportEvents.OnError, SignalRErrors.createError(message, "TimeoutException", this));
 
 			this.stop(false);
 

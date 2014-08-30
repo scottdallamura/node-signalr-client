@@ -2,7 +2,6 @@
 import http = require("http");
 import https = require("https");
 import url = require("url");
-import NodeRInterfaces = require("./NodeR.Interfaces");
 import SignalRInterfaces = require("./SignalR.Interfaces");
 
 function getProtocol(options: any): string {
@@ -18,7 +17,7 @@ function getProtocol(options: any): string {
 	return protocol;
 }
 
-export function createGetRequest(options: any, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+export function createGetRequest(options: any, deferred: Q.Deferred<SignalRInterfaces.HttpResponse>): http.ClientRequest {
 	var protocol: string = getProtocol(options);
 
 	var clientRequest: http.ClientRequest;
@@ -66,11 +65,11 @@ export function createGetRequest(options: any, deferred: Q.Deferred<NodeRInterfa
 	return clientRequest;
 }
 
-export function createPostRequest(options: any, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+export function createPostRequest(options: any, deferred: Q.Deferred<SignalRInterfaces.HttpResponse>): http.ClientRequest {
 	return createHttpRequest(options, "POST", deferred);
 }
 
-export function createHttpRequest(options: any, method: string, deferred: Q.Deferred<NodeRInterfaces.HttpResponse>): http.ClientRequest {
+export function createHttpRequest(options: any, method: string, deferred: Q.Deferred<SignalRInterfaces.HttpResponse>): http.ClientRequest {
 	if (typeof (options) === "string") {
 		options = url.parse(options);
 	}

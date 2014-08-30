@@ -1,8 +1,8 @@
 ﻿var Q = require("q");
 import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
-import NodeRErrors = require("./NodeR.Errors");
-import NodeRHelpers = require("./NodeR.Helpers");
+import SignalRErrors = require("./SignalR.Errors");
+import SignalRHelpers = require("./SignalR.Helpers");
 
 export class SignalRHub extends events.EventEmitter {
 	public name: string;
@@ -29,9 +29,9 @@ export class SignalRHub extends events.EventEmitter {
 		};
 
 		var callbackMethod = (minifiedResult: SignalRInterfaces.MinifiedHubResponse) => {
-			var result: SignalRInterfaces.HubResponse = NodeRHelpers.expandHubResponse(minifiedResult);
+			var result: SignalRInterfaces.HubResponse = SignalRHelpers.expandHubResponse(minifiedResult);
 
-			NodeRHelpers.extendState(this.state, result.State);
+			SignalRHelpers.extendState(this.state, result.State);
 
 			if (!!result.Progress) {
 				// notify progress
@@ -42,7 +42,7 @@ export class SignalRHub extends events.EventEmitter {
 					this._hubConnection.log(result.Error + "\n" + result.StackTrace + ".");
 				}
 
-				var error: Error = NodeRErrors.createError(result.Error, result.IsHubException ? "HubException" : "Exception", this);
+				var error: Error = SignalRErrors.createError(result.Error, result.IsHubException ? "HubException" : "Exception", this);
 				this._hubConnection.log(this.name + "." + method + " failed to execute. Error: " + error.message);
 
 				deferred.reject(error);
@@ -56,7 +56,7 @@ export class SignalRHub extends events.EventEmitter {
 		};
 
 		if (!this._hubConnection.sendWithCallback(data, invocationCallbackId, callbackMethod)) {
-			deferred.reject(NodeRErrors.createError(NodeRErrors.Messages.NotConnected, null, this));
+			deferred.reject(SignalRErrors.createError(SignalRErrors.Messages.NotConnected, null, this));
 		}
 
 		return deferred.promise;

@@ -5,8 +5,8 @@ import http = require("http");
 import websocket = require('websocket');
 import SignalRInterfaces = require("./SignalR.Interfaces");
 import SignalRTransports = require("./SignalR.Transports.Common");
-import NodeRErrors = require("./NodeR.Errors");
-import NodeRHelpers = require("./NodeR.Helpers");
+import SignalRErrors = require("./SignalR.Errors");
+import SignalRHelpers = require("./SignalR.Helpers");
 
 
 export class WebSocketsTransport extends SignalRTransports.TransportBase implements SignalRInterfaces.Transport {
@@ -27,7 +27,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 			this._websocketConnection.sendUTF(payload);
 		}
 		catch (ex) {
-			this.emit(SignalRInterfaces.TransportEvents.OnError, NodeRErrors.createError(NodeRErrors.Messages.WebSocketsInvalidState, ex, this));
+			this.emit(SignalRInterfaces.TransportEvents.OnError, SignalRErrors.createError(SignalRErrors.Messages.WebSocketsInvalidState, ex, this));
 		}
 	}
 
@@ -65,7 +65,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 							}
 						}
 						else {
-							transport.emit(SignalRInterfaces.TransportEvents.OnError, NodeRErrors.createError(NodeRErrors.Messages.WebSocketClosed, this, transport));
+							transport.emit(SignalRInterfaces.TransportEvents.OnError, SignalRErrors.createError(SignalRErrors.Messages.WebSocketClosed, this, transport));
 							transport.reconnect(connection);
 						}
 					}
@@ -75,7 +75,7 @@ export class WebSocketsTransport extends SignalRTransports.TransportBase impleme
 					var message: any = JSON.parse(data.utf8Data);
 
 					if (!!message) {
-						if (NodeRHelpers.isEmptyObject(message) || message.M) {
+						if (SignalRHelpers.isEmptyObject(message) || message.M) {
 							this.processMessages(connection, message);
 						}
 						else {

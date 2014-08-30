@@ -1,8 +1,8 @@
 ﻿var Q = require("q");
 import events = require("events");
 import SignalRInterfaces = require("./SignalR.Interfaces");
-import NodeRHelpers = require("./NodeR.Helpers");
-import NodeRErrors = require("./NodeR.Errors");
+import SignalRHelpers = require("./SignalR.Helpers");
+import SignalRErrors = require("./SignalR.Errors");
 
 export class TransportBase extends events.EventEmitter {
 	public name: string;
@@ -37,7 +37,7 @@ export class TransportBase extends events.EventEmitter {
 		connection.markLastMessage();
 
 		if (!!data) {
-			var persistentResponse: SignalRInterfaces.PersistentResponse = NodeRHelpers.expandPersistentResponse(data);
+			var persistentResponse: SignalRInterfaces.PersistentResponse = SignalRHelpers.expandPersistentResponse(data);
 
 			connection.updateGroups(persistentResponse.GroupsToken);
 
@@ -58,7 +58,7 @@ export class TransportBase extends events.EventEmitter {
 		abortUrl = prepareQueryString(connection, abortUrl);
 
 		var deferred: Q.Deferred<any> = Q.defer();
-		NodeRHelpers.createPostRequest(abortUrl, deferred);
+		SignalRHelpers.createPostRequest(abortUrl, deferred);
 		return deferred.promise;
 	}
 }

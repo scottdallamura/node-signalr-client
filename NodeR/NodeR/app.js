@@ -1,14 +1,14 @@
-﻿var NodeR = require("./NodeR");
-var NodeRHelpers = require("./NodeR.Helpers");
+﻿var SignalRClient = require("./SignalR.Client");
+var SignalRHelpers = require("./SignalR.Helpers");
 var WebSocketTransport = require("./SignalR.Transports.WebSockets");
 
 console.log('Hello world');
 
 var _name;
-var nodeRClient = new NodeR.NodeRClient([new WebSocketTransport.WebSocketsTransport()]);
+var signalRClient = new SignalRClient.SignalRClient([new WebSocketTransport.WebSocketsTransport()]);
 
 function getName() {
-    return NodeRHelpers.getConsoleInput("Enter your name: ");
+    return SignalRHelpers.getConsoleInput("Enter your name: ");
 }
 
 getName().then(function (name) {
@@ -19,11 +19,11 @@ getName().then(function (name) {
         name: "chathub"
     };
 
-    return nodeRClient.start("http://localhost:51554", connectionData);
+    return signalRClient.start("http://localhost:51554", connectionData);
 }).then(function (result) {
     console.log(result);
     
-    var hub = nodeRClient.createHub("chatHub");
+    var hub = signalRClient.createHub("chatHub");
     
     hub.addListener("broadcastMessage", function (args) {
         console.log(args);
